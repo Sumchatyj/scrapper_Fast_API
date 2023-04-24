@@ -1,0 +1,39 @@
+services:
+  db:
+    image: postgres:15-alpine
+    volumes:
+      - /var/lib/postgresql/data/
+    env_file:
+      - ./.env
+
+  web:
+    build: ./app
+    restart: always
+    command: "python main.py"
+    depends_on:
+      - db
+    env_file:
+      - ./.env
+    ports:
+      - "8000:8000"
+
+  rabbitmq:
+    image: rabbitmq:3.11-management
+    depends_on:
+      - db
+    ports:
+      - "5672:5672"
+      - "15672:15672"
+    volumes:
+        - ~/.docker-conf/rabbitmq/data/:/var/lib/rabbitmq/
+        - ~/.docker-conf/rabbitmq/log/:/var/log/rabbitmq
+    env_file:
+      - ./.env
+
+  celery:
+    build: ./app
+    command: "celery -A cards.tasks worker -B --loglevel=info"
+    depends_on:
+      - rabbitmq
+    env_file:
+      - ./.env
